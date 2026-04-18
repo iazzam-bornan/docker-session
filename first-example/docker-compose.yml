@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      MONGO_URI: mongodb://mongo:27017/reddit_lite_demo
+      AUTH_TOKEN: demo-token
+# depends_on does not guarantee Mongo is ready, only that the container starts first.
+# If your app sometimes starts too fast, add retry logic or a healthcheck later.
+    depends_on:
+      - mongo
+    networks:
+      - app_net
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app_net
+
+volumes:
+  mongo_data:
+
+# docker create default networks on usual cases :)
+networks:
+  app_net:
+    driver: bridge
