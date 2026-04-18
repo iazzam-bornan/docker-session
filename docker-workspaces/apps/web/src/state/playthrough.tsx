@@ -34,10 +34,13 @@ export const STEPS: PlaythroughStep[] = [
   {
     id: "open-project",
     title: "open the greeter-api project",
-    body: "navigate to ~/projects/greeter-api in the terminal or files app. open it in the code editor with `code .`",
-    command: "cd projects/greeter-api && code .",
+    body: "navigate to ~/projects/greeter-api in the terminal, then open it in the code editor with `code .`.",
+    command: "cd projects/greeter-api",
     phase: 1,
-    // auto-completed when files app is opened
+    match: (cmd, exit) =>
+      (/^cd\s+(?:~\/)?projects\/greeter-api\s*$/.test(cmd) ||
+        /^code(?:\s+\.)?\s*$/.test(cmd)) &&
+      exit === 0,
   },
   {
     id: "read-dockerfile",
@@ -61,8 +64,7 @@ export const STEPS: PlaythroughStep[] = [
     body: "build your Dockerfile into a Docker image. tag it 'greeter'.",
     command: "docker build -t greeter .",
     phase: 1,
-    match: (cmd, exit) =>
-      /^docker\s+build\s+-t\s+\w/.test(cmd) && exit === 0,
+    match: (cmd, exit) => /^docker\s+build\s+-t\s+\w/.test(cmd) && exit === 0,
   },
   {
     id: "run",
@@ -70,8 +72,7 @@ export const STEPS: PlaythroughStep[] = [
     body: "start a container from your image. map port 3000 so you can reach it from the browser.",
     command: "docker run -p 3000:3000 greeter",
     phase: 1,
-    match: (cmd, exit) =>
-      /^docker\s+run.*-p\s+\d+:\d+/.test(cmd) && exit === 0,
+    match: (cmd, exit) => /^docker\s+run.*-p\s+\d+:\d+/.test(cmd) && exit === 0,
   },
   {
     id: "test",
@@ -87,8 +88,7 @@ export const STEPS: PlaythroughStep[] = [
     body: "check with docker ps or open the containers app. your container should be listed as running.",
     command: "docker ps",
     phase: 1,
-    match: (cmd, exit) =>
-      /^docker\s+ps(\s+-a)?\s*$/.test(cmd) && exit === 0,
+    match: (cmd, exit) => /^docker\s+ps(\s+-a)?\s*$/.test(cmd) && exit === 0,
   },
   {
     id: "cleanup",
@@ -96,8 +96,7 @@ export const STEPS: PlaythroughStep[] = [
     body: "stop the container. you've completed the basic Docker loop: write → build → run → test → cleanup.",
     command: "docker rm -f greeter",
     phase: 1,
-    match: (cmd, exit) =>
-      /^docker\s+(stop|rm)/.test(cmd) && exit === 0,
+    match: (cmd, exit) => /^docker\s+(stop|rm)/.test(cmd) && exit === 0,
   },
 
   // ─── Phase 2: taskboard (full-stack) ──────────────────────────────
@@ -105,8 +104,10 @@ export const STEPS: PlaythroughStep[] = [
     id: "open-taskboard",
     title: "open the taskboard project",
     body: "navigate to ~/projects/taskboard. this is a full-stack app: React frontend + Express API + MongoDB + Redis.",
-    command: "cd ~/projects/taskboard && code .",
+    command: "cd ~/projects/taskboard",
     phase: 2,
+    match: (cmd, exit) =>
+      /^cd\s+(?:~\/)?projects\/taskboard\s*$/.test(cmd) && exit === 0,
     manualCheck: true,
   },
   {
@@ -139,8 +140,7 @@ export const STEPS: PlaythroughStep[] = [
     body: "docker-compose.yml is already written for you. it wires up mongo, redis, backend, and frontend. one command to start everything.",
     command: "docker compose up --build",
     phase: 2,
-    match: (cmd, exit) =>
-      /^docker\s+compose\s+up/.test(cmd) && exit === 0,
+    match: (cmd, exit) => /^docker\s+compose\s+up/.test(cmd) && exit === 0,
   },
   {
     id: "test-taskboard",
@@ -156,8 +156,7 @@ export const STEPS: PlaythroughStep[] = [
     body: "check all 4 services are running. look at the containers app or use docker compose ps.",
     command: "docker compose ps",
     phase: 2,
-    match: (cmd, exit) =>
-      /^docker\s+compose\s+ps/.test(cmd) && exit === 0,
+    match: (cmd, exit) => /^docker\s+compose\s+ps/.test(cmd) && exit === 0,
   },
   {
     id: "compose-down",
@@ -165,8 +164,7 @@ export const STEPS: PlaythroughStep[] = [
     body: "stop and remove everything. use -v to also wipe the database volume. congratulations — you've containerized a full-stack app!",
     command: "docker compose down -v",
     phase: 2,
-    match: (cmd, exit) =>
-      /^docker\s+compose\s+down/.test(cmd) && exit === 0,
+    match: (cmd, exit) => /^docker\s+compose\s+down/.test(cmd) && exit === 0,
   },
 ]
 
@@ -198,7 +196,12 @@ function loadState(): PlaythroughState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) {
-      return { cursor: 0, completed: new Set(), buildCount: 0, filesOpened: false }
+      return {
+        cursor: 0,
+        completed: new Set(),
+        buildCount: 0,
+        filesOpened: false,
+      }
     }
     const parsed = JSON.parse(raw) as {
       cursor?: number
@@ -213,7 +216,12 @@ function loadState(): PlaythroughState {
       filesOpened: parsed.filesOpened ?? false,
     }
   } catch {
-    return { cursor: 0, completed: new Set(), buildCount: 0, filesOpened: false }
+    return {
+      cursor: 0,
+      completed: new Set(),
+      buildCount: 0,
+      filesOpened: false,
+    }
   }
 }
 
@@ -300,7 +308,12 @@ export function PlaythroughProvider({
   )
 
   const reset = React.useCallback(() => {
-    setState({ cursor: 0, completed: new Set(), buildCount: 0, filesOpened: false })
+    setState({
+      cursor: 0,
+      completed: new Set(),
+      buildCount: 0,
+      filesOpened: false,
+    })
   }, [])
 
   const value = React.useMemo<PlaythroughContextValue>(
@@ -313,7 +326,14 @@ export function PlaythroughProvider({
       manualComplete,
       reset,
     }),
-    [state.cursor, state.completed, recordCommand, markFilesOpened, manualComplete, reset]
+    [
+      state.cursor,
+      state.completed,
+      recordCommand,
+      markFilesOpened,
+      manualComplete,
+      reset,
+    ]
   )
 
   return (

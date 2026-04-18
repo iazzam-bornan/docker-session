@@ -21,6 +21,12 @@ coverage
 
 # Build Outputs
 dist
+tmp/
+docker-session-deck/
+docker-session-deck-2/
+outputs/**
+!outputs/docker-session-deck/
+!outputs/docker-session-deck/output.pptx
 
 # Debug
 npm-debug.log*
