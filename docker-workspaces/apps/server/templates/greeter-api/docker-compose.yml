@@ -1,0 +1,37 @@
+# ──────────────────────────────────────────────────────────
+# docker-compose.yml for greeter-api
+# ──────────────────────────────────────────────────────────
+#
+# Docker Compose lets you define and run multi-container
+# apps with a single file. For greeter-api we only have one
+# service, but Compose is still useful because:
+#   - `docker compose up` builds + runs in one command
+#   - `docker compose down` stops + removes everything
+#   - environment variables, ports, and restart policies
+#     are declared here instead of long `docker run` flags
+#
+# Run with:
+#   docker compose up --build
+#
+# Stop with:
+#   docker compose down
+
+services:
+  api:
+    # "build: ." tells Compose to build an image from the
+    # Dockerfile in the current directory (the one you wrote!)
+    build: .
+
+    # Map host port 3000 → container port 3000.
+    # After `docker compose up`, visit http://localhost:3000
+    ports:
+      - "3000:3000"
+
+    # Pass environment variables into the container.
+    # The app reads NODE_ENV to decide logging level, etc.
+    environment:
+      - NODE_ENV=production
+
+    # Restart the container if it crashes, unless you
+    # explicitly stop it with `docker compose down`.
+    restart: unless-stopped

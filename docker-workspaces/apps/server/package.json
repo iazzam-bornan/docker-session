@@ -1,0 +1,19 @@
+{
+  "name": "server",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint config yet'"
+  },
+  "dependencies": {
+    "@workspace/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "typescript": "^5.9.3"
+  }
+}

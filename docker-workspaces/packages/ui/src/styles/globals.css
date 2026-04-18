@@ -1,0 +1,388 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:is(.dark *));
+@source "../../../apps/**/*.{ts,tsx}";
+@source "../../../components/**/*.{ts,tsx}";
+@source "../**/*.{ts,tsx}";
+
+@theme inline {
+    --font-heading: 'Bricolage Grotesque', 'Inter Variable', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    /* dockerlab additions: surfaces that aren't from the shadcn defaults */
+    --color-surface-glass: var(--surface-glass);
+    --color-surface-glass-border: var(--surface-glass-border);
+    --color-surface-sunken: var(--surface-sunken);
+    --color-surface-elevated: var(--surface-elevated);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+    --font-sans: 'Inter Variable', sans-serif;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * LIGHT (the default :root)
+ *
+ *   background  warm off-white                — desktop body
+ *   card        pure white                    — windows, popovers
+ *   muted       light gray                    — sidebars in apps
+ *   surface-sunken  even lighter neutral      — code blocks, terminals
+ *   surface-elevated  pale tinted             — hover/active overlays
+ *   surface-glass   semi-transparent white    — dock, top bar, chrome
+ *
+ * Foreground is a near-black for body text. Foreground at low opacity
+ * gives us a natural muted-text scale (foreground/65, foreground/45)
+ * that works the same way text-white/65 worked in dark mode.
+ * ───────────────────────────────────────────────────────────────────────── */
+:root {
+    --background: oklch(0.97 0.004 80);
+    --foreground: oklch(0.18 0.012 260);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.18 0.012 260);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.18 0.012 260);
+    --primary: oklch(0.72 0.16 70);
+    --primary-foreground: oklch(0.18 0.05 70);
+    --secondary: oklch(0.94 0.005 80);
+    --secondary-foreground: oklch(0.18 0.012 260);
+    --muted: oklch(0.94 0.005 80);
+    --muted-foreground: oklch(0.45 0.012 260);
+    --accent: oklch(0.93 0.012 80);
+    --accent-foreground: oklch(0.18 0.012 260);
+    --destructive: oklch(0.6 0.22 25);
+    --border: oklch(0.18 0.012 260 / 11%);
+    --input: oklch(0.18 0.012 260 / 7%);
+    --ring: oklch(0.72 0.16 70 / 50%);
+    --chart-1: oklch(0.72 0.16 70);
+    --chart-2: oklch(0.65 0.13 200);
+    --chart-3: oklch(0.55 0.18 30);
+    --chart-4: oklch(0.6 0.15 150);
+    --chart-5: oklch(0.5 0.12 280);
+    --radius: 0.75rem;
+    --sidebar: oklch(0.95 0.004 80);
+    --sidebar-foreground: oklch(0.18 0.012 260);
+    --sidebar-primary: oklch(0.72 0.16 70);
+    --sidebar-primary-foreground: oklch(0.18 0.05 70);
+    --sidebar-accent: oklch(0.93 0.01 80);
+    --sidebar-accent-foreground: oklch(0.18 0.012 260);
+    --sidebar-border: oklch(0.18 0.012 260 / 10%);
+    --sidebar-ring: oklch(0.72 0.16 70);
+    /* dockerlab surfaces */
+    --surface-sunken: oklch(0.93 0.005 80);
+    --surface-elevated: oklch(0.18 0.012 260 / 4%);
+    --surface-glass: oklch(1 0 0 / 70%);
+    --surface-glass-border: oklch(0.18 0.012 260 / 10%);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * DARK
+ *
+ *   background  near-black                    — desktop body
+ *   card        slightly raised dark          — windows, popovers
+ *   muted       darker gray                   — sidebars
+ *   surface-sunken  even darker               — terminals, code
+ *   surface-elevated  pale white overlay      — hover states
+ *   surface-glass   smoky translucent dark    — dock, top bar
+ * ───────────────────────────────────────────────────────────────────────── */
+/* VS Code-inspired dark: dark blue-gray rather than pure black. The slight
+   blue chroma (0.01–0.015 at hue 260) gives everything a professional IDE
+   feel instead of a flat OLED look. */
+.dark {
+    --background: oklch(0.17 0.012 260);
+    --foreground: oklch(0.93 0.006 260);
+    --card: oklch(0.2 0.012 260);
+    --card-foreground: oklch(0.93 0.006 260);
+    --popover: oklch(0.22 0.014 260);
+    --popover-foreground: oklch(0.93 0.006 260);
+    --primary: oklch(0.86 0.13 95);
+    --primary-foreground: oklch(0.16 0.02 95);
+    --secondary: oklch(0.25 0.012 260);
+    --secondary-foreground: oklch(0.93 0.006 260);
+    --muted: oklch(0.23 0.01 260);
+    --muted-foreground: oklch(0.62 0.01 260);
+    --accent: oklch(0.25 0.012 260);
+    --accent-foreground: oklch(0.93 0.006 260);
+    --destructive: oklch(0.65 0.2 25);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 8%);
+    --ring: oklch(0.86 0.13 95 / 50%);
+    --chart-1: oklch(0.86 0.13 95);
+    --chart-2: oklch(0.7 0.01 260);
+    --chart-3: oklch(0.55 0.01 260);
+    --chart-4: oklch(0.4 0.01 260);
+    --chart-5: oklch(0.3 0.01 260);
+    --sidebar: oklch(0.18 0.012 260);
+    --sidebar-foreground: oklch(0.93 0.006 260);
+    --sidebar-primary: oklch(0.86 0.13 95);
+    --sidebar-primary-foreground: oklch(0.16 0.02 95);
+    --sidebar-accent: oklch(0.24 0.012 260);
+    --sidebar-accent-foreground: oklch(0.93 0.006 260);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.86 0.13 95);
+    /* dockerlab surfaces */
+    --surface-sunken: oklch(0.14 0.01 260);
+    --surface-elevated: oklch(1 0 0 / 6%);
+    --surface-glass: oklch(0.18 0.012 260 / 65%);
+    --surface-glass-border: oklch(1 0 0 / 12%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "ss02", "cv11";
+    }
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* unified scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(1 0 0 / 0.12) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 0.10);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: oklch(1 0 0 / 0.18);
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  .font-mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "calt", "liga", "zero";
+  }
+  .font-display {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  @keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+  .caret-blink {
+    animation: blink 1.05s steps(1) infinite;
+  }
+  @keyframes window-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.98) translateY(4px);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+  .window-in {
+    animation: window-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .fade-in {
+    animation: fade-in 0.5s ease-out both;
+  }
+
+  /* reader-mode prose — applies to the sanitized html injected by the
+     dockerlab reader. nothing fancy, just enough to make extracted articles
+     readable. */
+  .reader-body p {
+    margin: 0 0 1.1em;
+  }
+  .reader-body h1,
+  .reader-body h2,
+  .reader-body h3,
+  .reader-body h4 {
+    color: oklch(0.96 0 0);
+    font-family: var(--font-heading);
+    letter-spacing: -0.01em;
+    margin: 1.6em 0 0.5em;
+    line-height: 1.25;
+  }
+  .reader-body h1 { font-size: 1.5rem; }
+  .reader-body h2 { font-size: 1.25rem; }
+  .reader-body h3 { font-size: 1.1rem; }
+  .reader-body h4 { font-size: 1rem; }
+  .reader-body a {
+    color: oklch(0.95 0 0);
+    text-decoration: underline;
+    text-decoration-color: oklch(1 0 0 / 0.25);
+    text-underline-offset: 2px;
+  }
+  .reader-body a:hover {
+    text-decoration-color: oklch(1 0 0 / 0.65);
+  }
+  .reader-body ul,
+  .reader-body ol {
+    margin: 0 0 1.1em 1.5em;
+    padding: 0;
+  }
+  .reader-body ul { list-style: disc; }
+  .reader-body ol { list-style: decimal; }
+  .reader-body li {
+    margin: 0.2em 0;
+  }
+  .reader-body blockquote {
+    margin: 1.2em 0;
+    padding: 0.6em 0 0.6em 1em;
+    border-left: 2px solid oklch(1 0 0 / 0.2);
+    color: oklch(1 0 0 / 0.65);
+    font-style: italic;
+  }
+  .reader-body pre {
+    margin: 1.2em 0;
+    padding: 0.8em 1em;
+    background: oklch(0 0 0 / 0.4);
+    border: 1px solid oklch(1 0 0 / 0.08);
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    overflow-x: auto;
+    color: oklch(1 0 0 / 0.85);
+  }
+  .reader-body code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: oklch(1 0 0 / 0.06);
+    border: 1px solid oklch(1 0 0 / 0.08);
+    border-radius: 4px;
+    padding: 0.05em 0.35em;
+  }
+  .reader-body pre code {
+    background: transparent;
+    border: 0;
+    padding: 0;
+  }
+  .reader-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    margin: 1em 0;
+  }
+  .reader-body figure {
+    margin: 1.4em 0;
+  }
+  .reader-body figcaption {
+    margin-top: 0.4em;
+    text-align: center;
+    color: oklch(1 0 0 / 0.45);
+    font-size: 11px;
+  }
+  .reader-body table {
+    width: 100%;
+    margin: 1.2em 0;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .reader-body th,
+  .reader-body td {
+    padding: 0.5em 0.7em;
+    border: 1px solid oklch(1 0 0 / 0.08);
+    text-align: left;
+  }
+  .reader-body th {
+    background: oklch(1 0 0 / 0.04);
+    color: oklch(0.96 0 0);
+  }
+  .reader-body hr {
+    border: 0;
+    border-top: 1px solid oklch(1 0 0 / 0.1);
+    margin: 2em 0;
+  }
+  .reader-body strong,
+  .reader-body b {
+    color: oklch(0.96 0 0);
+  }
+
+  /* unified range slider */
+  .slider-track {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: oklch(1 0 0 / 0.12);
+    border-radius: 999px;
+    outline: none;
+  }
+  .slider-track::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: oklch(0.96 0 0);
+    border: 2px solid oklch(0.18 0 0);
+    cursor: pointer;
+    transition: transform 0.12s ease;
+  }
+  .slider-track::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+  }
+  .slider-track::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: oklch(0.96 0 0);
+    border: 2px solid oklch(0.18 0 0);
+    cursor: pointer;
+  }
+}

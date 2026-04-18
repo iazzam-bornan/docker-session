@@ -1,0 +1,115 @@
+# ──────────────────────────────────────────────────────────
+# docker-compose.yml for taskboard
+# ──────────────────────────────────────────────────────────
+#
+# This file orchestrates 4 services that together form the
+# full-stack task board application:
+#
+#   mongo     → database (stores tasks)
+#   redis     → cache (speeds up reads)
+#   backend   → Express API (talks to mongo + redis)
+#   frontend  → React app served by nginx
+#
+# Run with:
+#   docker compose up --build
+#
+# Stop with:
+#   docker compose down
+#
+# Wipe database + start fresh:
+#   docker compose down -v
+
+services:
+
+  # ── MongoDB ──────────────────────────────────────────────
+  # The primary database. We use the official mongo:7 image
+  # — no Dockerfile needed, it's pre-built on Docker Hub.
+  mongo:
+    image: mongo:7 # pulled from Docker Hub automatically
+
+    ports:
+      - "27017:27017" # expose for debugging (optional)
+
+    volumes:
+      # Named volume: data persists across container restarts.
+      # `docker compose down -v` wipes it.
+      - mongo-data:/data/db
+
+      # Mount the seed script into mongo's init directory.
+      # Mongo runs any .js file it finds there on first boot.
+      # `:ro` means read-only — the container can't modify it.
+      - ./seed/seed.js:/docker-entrypoint-initdb.d/seed.js:ro
+
+    # Health check: Compose uses this to know when mongo is
+    # ready before starting services that depend on it.
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────
+  # In-memory cache. The backend stores task lists here for
+  # 30 seconds so repeated reads don't hit MongoDB every time.
+  redis:
+    image: redis:7-alpine # alpine = tiny (~30MB)
+
+    ports:
+      - "6379:6379"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (Express API) ────────────────────────────────
+  # Built from backend/Dockerfile (the one you wrote!).
+  backend:
+    build: ./backend # path to the directory with a Dockerfile
+
+    ports:
+      - "3000:3000"
+
+    # Environment variables the backend reads at startup.
+    # Inside a Compose network, services can reach each other
+    # by name: "mongo" resolves to the mongo container's IP.
+    environment:
+      MONGO_URL: mongodb://mongo:27017/taskboard
+      REDIS_URL: redis://redis:6379
+      PORT: "3000"
+
+    # Don't start the backend until mongo AND redis are healthy.
+    # Without this, the backend would crash on connect errors.
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Frontend (React + nginx) ─────────────────────────────
+  # Built from frontend/Dockerfile (the multi-stage one you
+  # wrote). The final image is just nginx serving static files.
+  frontend:
+    build: ./frontend
+
+    ports:
+      - "8080:80" # nginx inside listens on 80, we expose 8080
+
+    # Don't start until the backend is healthy — the nginx
+    # config proxies /api/ requests to the backend container.
+    depends_on:
+      backend:
+        condition: service_healthy
+
+# ── Named volumes ────────────────────────────────────────
+# Declared here so Docker manages the storage. Data survives
+# `docker compose down` but is wiped by `docker compose down -v`.
+volumes:
+  mongo-data:
