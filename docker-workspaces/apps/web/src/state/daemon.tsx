@@ -92,11 +92,9 @@ export type ReadFileResult =
   | { ok: true; content: string; language: string }
   | { ok: false; error: string }
 
-export type WriteFileResult =
-  | { ok: true }
-  | { ok: false; error: string }
+export type WriteFileResult = { ok: true } | { ok: false; error: string }
 
-type DaemonContextValue = {
+export type DaemonContextValue = {
   connection: ConnectionState
   sessionId: string | null
   /** Absolute home directory on the server. Null until hello resolves. */
@@ -136,7 +134,10 @@ type DaemonContextValue = {
   /** List files inside a running container at the given absolute path. */
   containerLs: (rawName: string, path: string) => Promise<ContainerLsResult>
   /** Run a one-shot shell command inside a running container. */
-  containerExec: (rawName: string, command: string) => Promise<ContainerExecResult>
+  containerExec: (
+    rawName: string,
+    command: string
+  ) => Promise<ContainerExecResult>
 }
 
 const DaemonContext = React.createContext<DaemonContextValue | undefined>(
@@ -153,7 +154,11 @@ type DaemonProviderProps = {
   children: React.ReactNode
 }
 
-export function DaemonProvider({ username, url, children }: DaemonProviderProps) {
+export function DaemonProvider({
+  username,
+  url,
+  children,
+}: DaemonProviderProps) {
   const [connection, setConnection] = React.useState<ConnectionState>("idle")
   const [sessionId, setSessionId] = React.useState<string | null>(null)
   const [home, setHome] = React.useState<string | null>(null)
@@ -164,9 +169,7 @@ export function DaemonProvider({ username, url, children }: DaemonProviderProps)
   const pendingRef = React.useRef(new Map<number, PendingRun>())
   const pendingPortRef = React.useRef(new Map<number, PendingPortLookup>())
   const pendingFileRef = React.useRef(new Map<number, PendingFileRequest>())
-  const pendingInventoryRef = React.useRef(
-    new Map<number, PendingInventory>()
-  )
+  const pendingInventoryRef = React.useRef(new Map<number, PendingInventory>())
   const pendingContainerOpRef = React.useRef(
     new Map<number, PendingContainerOp>()
   )
@@ -529,10 +532,7 @@ export function DaemonProvider({ username, url, children }: DaemonProviderProps)
   // will resolve when the matching reply arrives.
 
   const sendFileRequest = React.useCallback(
-    async <T,>(
-      msg: ClientMessage,
-      pending: PendingFileRequest
-    ): Promise<T> => {
+    async <T,>(msg: ClientMessage, pending: PendingFileRequest): Promise<T> => {
       const ws = wsRef.current
       if (!ws || ws.readyState !== WebSocket.OPEN) {
         return { ok: false, error: "not connected" } as T
@@ -589,36 +589,34 @@ export function DaemonProvider({ username, url, children }: DaemonProviderProps)
     [sendFileRequest]
   )
 
-  const listInventory = React.useCallback(async (): Promise<InventoryResult> => {
-    const ws = wsRef.current
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      return { ok: false, error: "not connected" }
-    }
-    if (helloPromiseRef.current) {
-      try {
-        await helloPromiseRef.current
-      } catch {
-        /* ignore */
+  const listInventory =
+    React.useCallback(async (): Promise<InventoryResult> => {
+      const ws = wsRef.current
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        return { ok: false, error: "not connected" }
       }
-    }
-    return new Promise<InventoryResult>((resolve) => {
-      const msgId = nextIdRef.current++
-      pendingInventoryRef.current.set(msgId, { resolve })
-      ws.send(
-        JSON.stringify({
-          kind: "list_containers",
-          msgId,
-        } satisfies ClientMessage)
-      )
-    })
-  }, [])
+      if (helloPromiseRef.current) {
+        try {
+          await helloPromiseRef.current
+        } catch {
+          /* ignore */
+        }
+      }
+      return new Promise<InventoryResult>((resolve) => {
+        const msgId = nextIdRef.current++
+        pendingInventoryRef.current.set(msgId, { resolve })
+        ws.send(
+          JSON.stringify({
+            kind: "list_containers",
+            msgId,
+          } satisfies ClientMessage)
+        )
+      })
+    }, [])
 
   // ─── per-container ops ────────────────────────────────────────────
   const sendContainerOp = React.useCallback(
-    async <T,>(
-      msg: ClientMessage,
-      pending: PendingContainerOp
-    ): Promise<T> => {
+    async <T,>(msg: ClientMessage, pending: PendingContainerOp): Promise<T> => {
       const ws = wsRef.current
       if (!ws || ws.readyState !== WebSocket.OPEN) {
         return { ok: false, error: "not connected" } as T
@@ -710,7 +708,9 @@ export function DaemonProvider({ username, url, children }: DaemonProviderProps)
     ]
   )
 
-  return <DaemonContext.Provider value={value}>{children}</DaemonContext.Provider>
+  return (
+    <DaemonContext.Provider value={value}>{children}</DaemonContext.Provider>
+  )
 }
 
 export function useDaemon() {

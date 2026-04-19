@@ -20,15 +20,11 @@
 #   docker compose down -v
 
 services:
-
   # ── MongoDB ──────────────────────────────────────────────
   # The primary database. We use the official mongo:7 image
   # — no Dockerfile needed, it's pre-built on Docker Hub.
   mongo:
     image: mongo:7 # pulled from Docker Hub automatically
-
-    ports:
-      - "27017:27017" # expose for debugging (optional)
 
     volumes:
       # Named volume: data persists across container restarts.
@@ -53,9 +49,6 @@ services:
   # 30 seconds so repeated reads don't hit MongoDB every time.
   redis:
     image: redis:7-alpine # alpine = tiny (~30MB)
-
-    ports:
-      - "6379:6379"
 
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -88,7 +81,11 @@ services:
         condition: service_healthy
 
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://localhost:3000/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -100,7 +97,7 @@ services:
     build: ./frontend
 
     ports:
-      - "8080:80" # nginx inside listens on 80, we expose 8080
+      - "${WEB_PORT:-8080}:80" # nginx inside listens on 80; dockerlab assigns WEB_PORT per session
 
     # Don't start until the backend is healthy — the nginx
     # config proxies /api/ requests to the backend container.

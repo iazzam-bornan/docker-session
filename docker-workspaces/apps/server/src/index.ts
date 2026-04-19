@@ -181,6 +181,7 @@ async function handleRun(
         cmd: [cmd.bin, ...cmd.args],
         // templates that don't pin a cwd inherit the request cwd
         cwd: cmd.cwd ?? cwdAbs,
+        env: cmd.env,
         timeoutMs: cmd.timeoutMs,
         onSpawn: (proc) => {
           activeProcs.set(msgId, proc)

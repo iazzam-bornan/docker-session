@@ -16,6 +16,9 @@
 // adding a new command means: add a new template object below.
 // ─────────────────────────────────────────────────────────────────────────
 
+import { existsSync } from "node:fs"
+import { join } from "node:path"
+
 import type { Session } from "./session"
 import { releasePort, reservePort } from "./workspace"
 
@@ -26,6 +29,8 @@ export type TemplateMatch = {
   args: string[]
   /** working directory */
   cwd?: string
+  /** extra environment variables for the spawned process */
+  env?: Record<string, string>
   /** soft kill timeout in ms */
   timeoutMs?: number
   /** optional message we want the user to see *before* the command runs */
@@ -83,6 +88,98 @@ function isValidPort(port: string): boolean {
 }
 
 const SESSION_LABEL = (session: Session) => `session=${session.id}`
+
+const RUNTIME_BIN = process.execPath
+
+const APPLY_SOLUTION_SCRIPT = `
+import { copyFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
+const root = process.env.SOLUTION_ROOT;
+if (!root) {
+  console.error("missing solution root");
+  process.exit(1);
+}
+
+const copies = [
+  [join(root, "solutions", "backend.Dockerfile"), join(root, "backend", "Dockerfile")],
+  [join(root, "solutions", "frontend.Dockerfile"), join(root, "frontend", "Dockerfile")],
+  [join(root, "solutions", "docker-compose.yml"), join(root, "docker-compose.yml")],
+];
+
+let copied = 0;
+for (const [src, dst] of copies) {
+  if (!existsSync(src)) continue;
+  copyFileSync(src, dst);
+  console.log(\`updated \${dst.split(/[\\\\/]/).slice(-2).join("/")}\`);
+  copied += 1;
+}
+
+if (!copied) {
+  console.error("no solution files found");
+  process.exit(1);
+}
+
+console.log("");
+console.log("Solution files copied into place.");
+console.log("Next:");
+console.log("  docker compose up --build");
+`
+
+const applySolution: Template = {
+  name: "apply solution",
+  match: /^(?:\.\/solution\.sh|bash\s+solution\.sh)\s*$/,
+  build: (_m, _session, ctx) => {
+    if (!existsSync(join(ctx.requestCwd, "solution.sh"))) {
+      return {
+        ok: false,
+        reason: "no solution.sh in this folder",
+        hint: "cd into the project root that contains solution.sh first",
+      }
+    }
+
+    return {
+      ok: true,
+      cmd: {
+        bin: RUNTIME_BIN,
+        args: ["-e", APPLY_SOLUTION_SCRIPT],
+        cwd: ctx.requestCwd,
+        env: {
+          SOLUTION_ROOT: ctx.requestCwd,
+        },
+        timeoutMs: 10_000,
+      },
+    }
+  },
+}
+
+// ─── docker help ─────────────────────────────────────────────────────────
+
+const dockerHelp: Template = {
+  name: "docker help",
+  match: /^docker\s*(?:--help|-h)?\s*$/,
+  build: () => ({
+    ok: true,
+    cmd: {
+      bin: "docker",
+      args: ["--help"],
+      timeoutMs: 5_000,
+    },
+  }),
+}
+
+const dockerComposeHelp: Template = {
+  name: "docker compose help",
+  match: /^docker\s+compose\s*(?:--help|-h)?\s*$/,
+  build: () => ({
+    ok: true,
+    cmd: {
+      bin: "docker",
+      args: ["compose", "--help"],
+      timeoutMs: 5_000,
+    },
+  }),
+}
 
 // ─── docker images ───────────────────────────────────────────────────────
 
@@ -282,11 +379,7 @@ const dockerRm: Template = {
       ok: true,
       cmd: {
         bin: "docker",
-        args: [
-          "rm",
-          ...(force ? ["-f"] : []),
-          prefixed(session, userName),
-        ],
+        args: ["rm", ...(force ? ["-f"] : []), prefixed(session, userName)],
         timeoutMs: 30_000,
       },
     }
@@ -361,10 +454,7 @@ const dockerInspect: Template = {
       ok: true,
       cmd: {
         bin: "docker",
-        args: [
-          "inspect",
-          prefixed(session, userName),
-        ],
+        args: ["inspect", prefixed(session, userName)],
         timeoutMs: 10_000,
       },
     }
@@ -387,17 +477,56 @@ function composeBaseArgs(session: Session, requestCwd: string): string[] {
     "--project-directory",
     requestCwd,
     "-f",
-    `${requestCwd}/docker-compose.yml`,
+    join(requestCwd, "docker-compose.yml"),
   ]
+}
+
+const COMPOSE_ALLOWED_UP_FLAGS = new Set([
+  "-d",
+  "--build",
+  "--remove-orphans",
+  "--force-recreate",
+  "--no-build",
+  "--pull=always",
+  "--pull=missing",
+  "--pull=never",
+])
+
+function parseComposeUpFlags(
+  raw: string
+):
+  | { ok: true; flags: string[] }
+  | { ok: false; reason: string; hint?: string } {
+  const flags = raw.trim() ? raw.trim().split(/\s+/) : []
+  for (const flag of flags) {
+    if (!COMPOSE_ALLOWED_UP_FLAGS.has(flag)) {
+      return {
+        ok: false,
+        reason: `unsupported compose flag: ${flag}`,
+        hint: "try `docker compose up --build`, `docker compose up -d --build`, or `docker compose down -v`",
+      }
+    }
+  }
+  return { ok: true, flags }
 }
 
 const dockerComposeUp: Template = {
   name: "docker compose up",
-  match: /^docker\s+compose\s+up(\s+-d|\s+--build)*\s*$/,
+  match:
+    /^docker\s+compose\s+up((?:\s+(?:-d|--build|--remove-orphans|--force-recreate|--no-build|--pull=(?:always|missing|never)))*)\s*$/,
   build: (m, session, ctx) => {
-    const flags = m[0].replace(/^docker\s+compose\s+up\s*/, "").trim()
-    const extras: string[] = []
-    if (flags.includes("--build")) extras.push("--build")
+    const parsed = parseComposeUpFlags(m[1] ?? "")
+    if (!parsed.ok) return parsed
+
+    const webPort = reservePort(session.id, 8080)
+    if (webPort === null) {
+      return {
+        ok: false,
+        reason:
+          "your port slice is full - `docker compose down` something first",
+      }
+    }
+
     return {
       ok: true,
       cmd: {
@@ -406,11 +535,15 @@ const dockerComposeUp: Template = {
           ...composeBaseArgs(session, ctx.requestCwd),
           "up",
           "-d", // always detached so the websocket isn't blocked
-          ...extras,
+          ...parsed.flags.filter((flag) => flag !== "-d"),
         ],
         cwd: ctx.requestCwd,
+        env: {
+          WEB_PORT: String(webPort),
+        },
         timeoutMs: 10 * 60_000,
-        epilogue: "stack up — try `docker compose ps`",
+        epilogue:
+          "stack up - try `docker compose ps`, then open http://localhost:8080",
       },
     }
   },
@@ -418,9 +551,10 @@ const dockerComposeUp: Template = {
 
 const dockerComposeDown: Template = {
   name: "docker compose down",
-  match: /^docker\s+compose\s+down(\s+-v)?\s*$/,
+  match: /^docker\s+compose\s+down(\s+(?:-v|--volumes))?\s*$/,
   build: (m, session, ctx) => {
     const wipeVolumes = m[1] !== undefined
+    releasePort(session.id, 8080)
     return {
       ok: true,
       cmd: {
@@ -467,17 +601,27 @@ const dockerComposeBuild: Template = {
 
 const dockerComposeLogs: Template = {
   name: "docker compose logs",
-  match: /^docker\s+compose\s+logs(\s+--tail=\d{1,4})?\s*$/,
+  match:
+    /^docker\s+compose\s+logs(\s+-f)?(\s+--tail=\d{1,4})?(?:\s+([a-z][a-z0-9-]{0,30}))?\s*$/,
   build: (m, session, ctx) => {
     const tailMatch = m[0].match(/--tail=(\d{1,4})/)
+    const follow = m[1] !== undefined
     const tail = tailMatch ? tailMatch[1] : "200"
+    const service = m[3]
     return {
       ok: true,
       cmd: {
         bin: "docker",
-        args: [...composeBaseArgs(session, ctx.requestCwd), "logs", "--tail", tail],
+        args: [
+          ...composeBaseArgs(session, ctx.requestCwd),
+          "logs",
+          "--tail",
+          tail,
+          ...(follow ? ["-f"] : []),
+          ...(service ? [service] : []),
+        ],
         cwd: ctx.requestCwd,
-        timeoutMs: 10_000,
+        timeoutMs: follow ? undefined : 10_000,
       },
     }
   },
@@ -492,6 +636,9 @@ const dockerComposeLogs: Template = {
 // ones (`docker run` etc) — though they don't actually overlap, having
 // compose first makes the registry easier to scan.
 export const TEMPLATES: Template[] = [
+  applySolution,
+  dockerHelp,
+  dockerComposeHelp,
   dockerImages,
   dockerPs,
   dockerBuild,
@@ -511,7 +658,7 @@ export const TEMPLATES: Template[] = [
 export function matchTemplate(
   input: string
 ): { template: Template; match: RegExpMatchArray } | null {
-  const trimmed = input.trim()
+  const trimmed = input.trim().replace(/^docker-compose\b/, "docker compose")
   for (const template of TEMPLATES) {
     const m = trimmed.match(template.match)
     if (m) return { template, match: m }

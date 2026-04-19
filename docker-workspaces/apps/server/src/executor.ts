@@ -3,14 +3,12 @@
 
 import type { Subprocess } from "bun"
 
-export type StreamCallback = (
-  stream: "stdout" | "stderr",
-  text: string
-) => void
+export type StreamCallback = (stream: "stdout" | "stderr", text: string) => void
 
 export type RunOptions = {
   cmd: string[]
   cwd?: string
+  env?: Record<string, string>
   /** kill the process if it runs longer than this many ms */
   timeoutMs?: number
   /**
@@ -31,6 +29,7 @@ export async function runStreaming(
 ): Promise<RunResult> {
   const proc = Bun.spawn(opts.cmd, {
     cwd: opts.cwd,
+    env: opts.env ? { ...process.env, ...opts.env } : process.env,
     stdout: "pipe",
     stderr: "pipe",
     stdin: "ignore",
