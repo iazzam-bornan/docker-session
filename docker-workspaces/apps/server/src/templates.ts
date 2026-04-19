@@ -16,6 +16,7 @@
 // adding a new command means: add a new template object below.
 // ─────────────────────────────────────────────────────────────────────────
 
+import { existsSync } from "node:fs"
 import { join } from "node:path"
 
 import type { Session } from "./session"
@@ -87,6 +88,70 @@ function isValidPort(port: string): boolean {
 }
 
 const SESSION_LABEL = (session: Session) => `session=${session.id}`
+
+const RUNTIME_BIN = process.execPath
+
+const APPLY_SOLUTION_SCRIPT = `
+import { copyFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
+const root = process.env.SOLUTION_ROOT;
+if (!root) {
+  console.error("missing solution root");
+  process.exit(1);
+}
+
+const copies = [
+  [join(root, "solutions", "backend.Dockerfile"), join(root, "backend", "Dockerfile")],
+  [join(root, "solutions", "frontend.Dockerfile"), join(root, "frontend", "Dockerfile")],
+  [join(root, "solutions", "docker-compose.yml"), join(root, "docker-compose.yml")],
+];
+
+let copied = 0;
+for (const [src, dst] of copies) {
+  if (!existsSync(src)) continue;
+  copyFileSync(src, dst);
+  console.log(\`updated \${dst.split(/[\\\\/]/).slice(-2).join("/")}\`);
+  copied += 1;
+}
+
+if (!copied) {
+  console.error("no solution files found");
+  process.exit(1);
+}
+
+console.log("");
+console.log("Solution files copied into place.");
+console.log("Next:");
+console.log("  docker compose up --build");
+`
+
+const applySolution: Template = {
+  name: "apply solution",
+  match: /^(?:\.\/solution\.sh|bash\s+solution\.sh)\s*$/,
+  build: (_m, _session, ctx) => {
+    if (!existsSync(join(ctx.requestCwd, "solution.sh"))) {
+      return {
+        ok: false,
+        reason: "no solution.sh in this folder",
+        hint: "cd into the project root that contains solution.sh first",
+      }
+    }
+
+    return {
+      ok: true,
+      cmd: {
+        bin: RUNTIME_BIN,
+        args: ["-e", APPLY_SOLUTION_SCRIPT],
+        cwd: ctx.requestCwd,
+        env: {
+          SOLUTION_ROOT: ctx.requestCwd,
+        },
+        timeoutMs: 10_000,
+      },
+    }
+  },
+}
 
 // ─── docker help ─────────────────────────────────────────────────────────
 
@@ -571,6 +636,7 @@ const dockerComposeLogs: Template = {
 // ones (`docker run` etc) — though they don't actually overlap, having
 // compose first makes the registry easier to scan.
 export const TEMPLATES: Template[] = [
+  applySolution,
   dockerHelp,
   dockerComposeHelp,
   dockerImages,
