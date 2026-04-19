@@ -2,13 +2,17 @@
 
 Working Dockerfiles for the taskboard project.
 
-To use them, copy each into the right subfolder:
+Fast path:
+
+```bash
+./solution.sh
+docker compose up --build
+```
+
+Manual copy still works too:
+
 ```bash
 cp solutions/backend.Dockerfile backend/Dockerfile
 cp solutions/frontend.Dockerfile frontend/Dockerfile
-```
-
-Then run:
-```bash
 docker compose up --build
 ```
